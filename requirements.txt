@@ -1,0 +1,9 @@
+# MeetingStream Python dependencies
+# Install: pip install -r requirements.txt
+
+# LLM Providers (install the one you use)
+anthropic>=0.30.0    # For Claude
+# openai>=1.30.0     # For OpenAI (uncomment if using)
+
+# Python 3.10 compatibility (tomllib backport)
+tomli>=2.0.0; python_version < "3.11"

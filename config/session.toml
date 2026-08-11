@@ -1,0 +1,21 @@
+# MeetingStream Session Config
+# Personal equivalent of TalkStream's remote-english.toml
+
+[llm]
+# Options: "claude", "openai", "ollama"
+provider = "claude"
+# model = "claude-sonnet-4-20250514"  # default for claude
+# model = "gpt-4o"                    # default for openai
+# model = "llama3.1:8b"              # default for ollama
+
+# API key (or set ANTHROPIC_API_KEY / OPENAI_API_KEY env var)
+# api_key = "sk-..."  # NOT recommended in file — use env var instead
+
+[audio]
+device = "Meeting Capture"
+language = "en"
+
+# Which agents to run (must have matching .md file in agents/ directory)
+agents = ["transcriber", "note-taker"]
+# Add "sketch-artist" if you want architecture diagrams:
+# agents = ["transcriber", "note-taker", "sketch-artist"]

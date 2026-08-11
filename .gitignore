@@ -1,0 +1,22 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Models (too large for git)
+*.bin
+
+# Output (don't commit meeting notes to repo)
+output/
+
+# IDE
+.vscode/
+.idea/
