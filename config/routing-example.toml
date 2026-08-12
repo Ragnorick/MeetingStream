@@ -1,0 +1,70 @@
+# Meeting Notes Routing Configuration
+# Controls how TalkStream meeting notes are classified and filed after each session.
+# Edit this file to add new projects, keywords, or routing rules.
+
+[routing]
+# Base path for project-level meeting notes
+base_path = "/Users/rickvan/Library/CloudStorage/OneDrive-amazon.com/00 Work/01 2026 Work/01 Projects"
+
+# Unclassified fallback folder (inside Projects for visibility)
+unclassified_path = "/Users/rickvan/Library/CloudStorage/OneDrive-amazon.com/00 Work/01 2026 Work/01 Projects/Unclassified"
+
+# Calendar lookup alias
+calendar_alias = "rickvan"
+
+# --- Project Definitions ---
+# Each project has: name, folder, notes_subfolder, keywords
+# Keywords are matched case-insensitively against the calendar meeting title.
+# Sub-routes are optional overrides when additional keywords match within a project.
+
+[[project]]
+name = "Exit-OFA"
+folder = "01 Exit OFA"
+notes_subfolder = "00 Meeting Notes"
+keywords = [
+    "OFA", "Oracle", "migration", "AP/AR migration", "aged invoices",
+    "cutover", "USL", "Teller", "debit balance write-off", "Exit-OFA",
+    "OFA-AP", "E3 France", "cross-program", "Retail functionality",
+    "SIT completed", "DBR", "Payment Priority", "SteerCo",
+    "AP Credit Note", "VPS process flow", "Test Automation validation",
+    "C2FO", "e-invoicing", "Hypercare"
+]
+
+    [[project.sub_route]]
+    name = "UAT/PVT War Room Handoffs"
+    subfolder = "_UATPVT War Room Handoffs"
+    keywords = ["UAT", "PVT", "War room", "War-room", "Hand-off Shift", "Handoff"]
+
+[[project]]
+name = "REMA"
+folder = "02 REMA"
+notes_subfolder = "00 Meeting Notes"
+keywords = ["REMA", "Matchblock", "RBNI Controls", "Payment Decisions", "Duplicate Invoice", "Overbilled Invoice"]
+
+[[project]]
+name = "Anu 1:1"
+# This uses a custom absolute path (outside the base_path/folder convention)
+folder = "_ABSOLUTE_"
+absolute_path = "/Users/rickvan/Library/CloudStorage/OneDrive-amazon.com/00 Work/01 2026 Work/02 Anu Meeting Notes"
+notes_subfolder = ""
+keywords = ["1:1 with Anu", "1-1 with Anu", "Weekly with Anu", "Anu Rohit"]
+
+# --- Known Meeting Series (exact title patterns) ---
+# These override keyword matching when the calendar title contains the pattern (case-insensitive).
+
+[[known_series]]
+pattern = "Aged invoices clean up"
+project = "Exit-OFA"
+
+[[known_series]]
+pattern = "test automation validation governance weekly call"
+project = "Exit-OFA"
+
+[[known_series]]
+pattern = "Teller Test Automation Core Team Connect"
+project = "Exit-OFA"
+
+[[known_series]]
+pattern = "E3 France - Daily EOD Cross-program connect"
+project = "Exit-OFA"
+sub_route = "UAT/PVT War Room Handoffs"
