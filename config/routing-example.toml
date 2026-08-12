@@ -37,7 +37,7 @@ keywords = [
 
 [[project]]
 name = "REMA"
-folder = "02 REMA"
+folder = "04 REMA"
 notes_subfolder = "00 Meeting Notes"
 keywords = ["REMA", "Matchblock", "RBNI Controls", "Payment Decisions", "Duplicate Invoice", "Overbilled Invoice"]
 
