@@ -191,12 +191,38 @@ def save_learned_rule(title_pattern: str, destination: str, tag: str):
 
 
 def check_learned_rules(title: str) -> dict | None:
-    """Check if a learned rule matches this title."""
+    """Check if a learned rule matches this title.
+    
+    Validates that the destination path still exists on disk.
+    If the folder has been renamed, moved, or deleted, the rule is
+    invalidated (removed) and we fall through to later classification steps.
+    
+    TODO (UI build): In the Settings UI, show all learned rules with:
+      - Edit/delete buttons per rule
+      - Visual indicator for rules pointing to missing/deleted folders
+      - Visual indicator for new folders that don't have any rules yet
+      - "Re-evaluate" button that re-scans and flags discrepancies
+      See: CONTEXT-UI-BUILD.md
+    """
     rules = load_learned_rules()
     title_lower = title.lower()
+    modified = False
+
     for rule in rules:
         if rule["pattern"] in title_lower:
-            return rule
+            # Validate destination still exists
+            if Path(rule["destination"]).exists():
+                return rule
+            else:
+                # Path is stale — invalidate this rule
+                print(f"[route] Learned rule invalidated: '{rule['pattern']}' → folder no longer exists: {rule['destination']}")
+                rules.remove(rule)
+                modified = True
+                break  # Fall through to next classification step
+
+    if modified:
+        LEARNED_RULES_FILE.write_text(json.dumps(rules, indent=2))
+
     return None
 
 

@@ -153,6 +153,23 @@ Learned rules are the **self-improving** part of the system. They start empty an
 - Deterministic keyword matching (those are manual in routing.toml)
 - Simply running the app with no meetings
 
+### Learned Rules — Staleness & Invalidation
+
+Learned rules store a hardcoded destination path. If the user renames, moves, or deletes that folder, the rule becomes stale.
+
+**Current behavior (simple fix):**
+- When a learned rule matches a title, the system checks if the destination path still exists on disk
+- If the folder is gone → rule is automatically deleted from `learned-routes.json`
+- The meeting falls through to Step 2/3 for fresh classification
+- User sees: `[route] Learned rule invalidated: 'weekly anu' → folder no longer exists`
+
+**Future behavior (UI build — Settings panel):**
+- Show all learned rules in a list with edit/delete buttons
+- Visual indicator (red/yellow) for rules pointing to missing or deleted folders
+- Visual indicator (green + "new") for recently created folders that have no rules pointing to them
+- "Re-evaluate all" button that scans the folder structure and flags discrepancies
+- Ability to manually reassign a stale rule to a new folder path without waiting for the LLM
+
 ### Folder Scan — What It Does and Doesn't Do
 
 | Does | Doesn't |
