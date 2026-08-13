@@ -50,6 +50,13 @@ cleanup() {
     echo ""
     echo "Recording saved: $WAV_FILE"
     echo "Notes saved:     $OUTPUT_DIR/"
+
+    # Auto-route meeting notes to project folder
+    if [ -f "$OUTPUT_DIR/meeting-notes.md" ]; then
+        echo ""
+        python3 "$SCRIPT_DIR/route_meeting.py" "$OUTPUT_DIR" --mode hybrid
+    fi
+
     echo "Transcribe:      transcribe $WAV_FILE en"
 }
 trap cleanup EXIT INT TERM

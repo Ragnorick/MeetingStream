@@ -19,3 +19,27 @@ language = "en"
 agents = ["transcriber", "note-taker"]
 # Add "sketch-artist" if you want architecture diagrams:
 # agents = ["transcriber", "note-taker", "sketch-artist"]
+
+[routing]
+# How to classify meetings for filing:
+#   "deterministic" = keyword matching only (fast, free, requires routing.toml config)
+#   "agentic"       = LLM reads notes + scans folders (smart, costs ~$0.02/meeting)
+#   "hybrid"        = tries keywords first, falls back to LLM if no match (recommended)
+mode = "hybrid"
+
+# Base folder where project subfolders live
+# The router scans this to discover available destinations
+base_path = "~/Documents/MeetingStream/Projects"
+
+# Fallback when nothing matches
+unclassified_path = "~/Documents/MeetingStream/Projects/Unclassified"
+
+# --- For deterministic/hybrid mode: keyword rules ---
+# See config/routing-example.toml for the full keyword config format.
+# Copy it to routing.toml and customize for your projects.
+
+# --- For future managed/SaaS mode ---
+# [llm]
+# provider = "managed"
+# managed_api_url = "https://api.meetingstream.io/v1"
+# managed_api_key = "ms_user_abc123"  # customer's subscription key
