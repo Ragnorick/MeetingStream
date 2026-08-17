@@ -130,6 +130,121 @@ class ManagedProvider(LLMProvider):
         return result["response"]
 
 
+class BedrockProvider(LLMProvider):
+    """AWS Bedrock provider — uses Claude via Amazon's infrastructure.
+    
+    Authentication: Uses credentials exported by the claude CLI tool,
+    or falls back to standard AWS credential chain (env vars, profiles).
+    
+    For Amazon employees: free via internal Bedrock access.
+    For product customers: they'd need their own AWS account with Bedrock enabled.
+    
+    NOTE FOR PRODUCTIZATION: 
+    - This provider works for internal/dev use (free via employer AWS access)
+    - For BYOK customers with AWS accounts, they'd set credential_cmd=None
+      and use AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars
+    - For managed tier, replace with ManagedProvider (proxy through your backend)
+    - Change the credential_cmd default to None before shipping publicly
+    """
+    def __init__(self, model="anthropic.claude-sonnet-4-20250514-v1:0",
+                 region="us-west-2", credential_cmd=None):
+        self.model = model
+        self.region = region
+        self.credential_cmd = credential_cmd
+
+    def _get_credentials(self) -> dict:
+        """Get AWS credentials via claude CLI export or env vars."""
+        import subprocess
+
+        # Try claude CLI credential export (Amazon internal), with retries
+        if self.credential_cmd:
+            for attempt in range(3):
+                try:
+                    result = subprocess.run(
+                        self.credential_cmd.split(),
+                        capture_output=True, text=True, timeout=30
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        # Parse JSON, skip any info lines
+                        for line in result.stdout.strip().split("\n"):
+                            line = line.strip()
+                            if line.startswith("{"):
+                                creds = json.loads(line)
+                                c = creds.get("Credentials", creds)
+                                return {
+                                    "access_key": c["AccessKeyId"],
+                                    "secret_key": c["SecretAccessKey"],
+                                    "session_token": c.get("SessionToken", ""),
+                                }
+                except Exception as e:
+                    if attempt == 2:
+                        print(f"[bedrock] Credential export failed after 3 attempts: {e}", file=sys.stderr)
+
+        # Fall back to environment variables
+        access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+        session_token = os.environ.get("AWS_SESSION_TOKEN", "")
+        if access_key and secret_key:
+            return {"access_key": access_key, "secret_key": secret_key, "session_token": session_token}
+
+        print("Error: No AWS credentials available for Bedrock. Run mwinit or set AWS env vars.", file=sys.stderr)
+        sys.exit(1)
+
+    def chat(self, system_prompt: str, user_message: str) -> str:
+        # Use boto3 (AWS SDK) — handles SigV4 signing and credentials reliably.
+        # NOTE FOR PRODUCTIZATION: boto3 is a dependency for the bedrock provider.
+        # BYOK/managed customers using claude/openai providers don't need it.
+        import boto3
+
+        creds = self._get_credentials()
+
+        client = boto3.client(
+            "bedrock-runtime",
+            region_name=self.region,
+            aws_access_key_id=creds["access_key"],
+            aws_secret_access_key=creds["secret_key"],
+            aws_session_token=creds.get("session_token") or None,
+        )
+
+        response = client.converse(
+            modelId=self.model,
+            messages=[{"role": "user", "content": [{"text": user_message}]}],
+            system=[{"text": system_prompt}],
+            inferenceConfig={"maxTokens": 1024},
+        )
+
+        return response["output"]["message"]["content"][0]["text"]
+
+
+class ClaudeCLIProvider(LLMProvider):
+    """Uses the `claude` CLI in print mode (-p) for one-shot completions.
+
+    This is the most reliable option on Amazon-managed machines where the
+    claude CLI is already authenticated (via Midway/internal gateway) — it
+    avoids direct Bedrock InvokeModel permissions entirely.
+
+    NOTE FOR PRODUCTIZATION:
+    - This is an Amazon-internal convenience (uses the work claude CLI).
+    - For the public product, use ClaudeProvider (Anthropic API key) instead.
+    - Not portable to personal Macs unless they have the same CLI installed.
+    """
+    def __init__(self, cli_path="/Users/rickvan/.toolbox/bin/claude"):
+        self.cli_path = cli_path
+
+    def chat(self, system_prompt: str, user_message: str) -> str:
+        import subprocess
+        combined = f"{system_prompt}\n\n{user_message}"
+        result = subprocess.run(
+            [self.cli_path, "-p", combined],
+            capture_output=True, text=True, timeout=90
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"claude CLI failed: {result.stderr[:200]}")
+        # Filter out any 'claude: info:' lines that leak to stdout
+        lines = [l for l in result.stdout.strip().split("\n") if not l.startswith("claude: info")]
+        return "\n".join(lines).strip()
+
+
 def create_provider(config: dict) -> LLMProvider:
     """Create LLM provider from config."""
     llm_config = config.get("llm", {})
@@ -157,6 +272,20 @@ def create_provider(config: dict) -> LLMProvider:
             print("Error: Set managed_api_url and managed_api_key for managed provider", file=sys.stderr)
             sys.exit(1)
         return ManagedProvider(api_url, api_key)
+    elif provider_name == "bedrock":
+        # Direct Bedrock InvokeModel — requires bedrock:InvokeModel IAM permission.
+        # NOTE: Amazon-internal claude CLI credentials do NOT have this permission
+        #       (they route through an internal gateway). Use "claude-cli" instead
+        #       on work machines. This is for customers with their own AWS + Bedrock.
+        region = llm_config.get("region", "us-west-2")
+        credential_cmd = llm_config.get("credential_cmd")
+        bedrock_model = model or "anthropic.claude-sonnet-4-20250514-v1:0"
+        return BedrockProvider(bedrock_model, region, credential_cmd)
+    elif provider_name == "claude-cli":
+        # Amazon-internal: shells out to the authenticated claude CLI.
+        # Free, no API key, works on work machines. NOT for public product.
+        cli_path = llm_config.get("cli_path", "/Users/rickvan/.toolbox/bin/claude")
+        return ClaudeCLIProvider(cli_path)
     else:
         print(f"Error: Unknown provider '{provider_name}'", file=sys.stderr)
         sys.exit(1)
@@ -190,7 +319,7 @@ def save_learned_rule(title_pattern: str, destination: str, tag: str):
     LEARNED_RULES_FILE.write_text(json.dumps(rules, indent=2))
 
 
-def check_learned_rules(title: str) -> dict | None:
+def check_learned_rules(title: str):
     """Check if a learned rule matches this title.
     
     Validates that the destination path still exists on disk.
@@ -311,7 +440,7 @@ Classify this meeting and pick the best folder."""
 # Deterministic Router (keyword-based, from routing.toml)
 # ---------------------------------------------------------------------------
 
-def deterministic_classify(title: str, config: dict) -> dict | None:
+def deterministic_classify(title: str, config: dict):
     """Keyword-based classification from routing.toml. Returns None if no match."""
     base_path = config["routing"]["base_path"]
 

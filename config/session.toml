@@ -2,14 +2,22 @@
 # Personal equivalent of TalkStream's remote-english.toml
 
 [llm]
-# Options: "claude", "openai", "ollama"
-provider = "claude"
-# model = "claude-sonnet-4-20250514"  # default for claude
-# model = "gpt-4o"                    # default for openai
-# model = "llama3.1:8b"              # default for ollama
+# Options: "claude-cli", "claude", "openai", "ollama", "bedrock", "managed"
+# "claude-cli" = Amazon-internal: uses authenticated claude CLI (free, work machines only)
+# "claude"     = direct Anthropic API (needs ANTHROPIC_API_KEY) — USE THIS ON PERSONAL MAC
+# "openai"     = direct OpenAI API (needs OPENAI_API_KEY)
+# "ollama"     = local model, free, lower quality
+# "bedrock"    = direct AWS Bedrock (needs your own AWS account + bedrock:InvokeModel)
+# "managed"    = future SaaS mode (proxy through your backend)
+provider = "claude-cli"
+# cli_path = "/Users/rickvan/.toolbox/bin/claude"  # Amazon internal claude CLI
 
-# API key (or set ANTHROPIC_API_KEY / OPENAI_API_KEY env var)
-# api_key = "sk-..."  # NOT recommended in file — use env var instead
+# ┌─────────────────────────────────────────────────────────────────┐
+# │ FOR PERSONAL MAC: change the above to:                            │
+# │   provider = "claude"                                             │
+# │ and set your API key:  export ANTHROPIC_API_KEY="sk-ant-..."     │
+# │ (get a key at console.anthropic.com)                              │
+# └─────────────────────────────────────────────────────────────────┘
 
 [audio]
 device = "Meeting Capture"
